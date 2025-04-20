@@ -2,7 +2,7 @@
 
 ## @zereight/mcp-gitlab
 
-[![smithery badge](https://smithery.ai/badge/@zereight/gitlab-mcp)](https://smithery.ai/server/@zereight/gitlab-mcp)
+[![smithery badge](https://smithery.ai/badge/@hthuong09/gitlab-mcp)](https://smithery.ai/server/@hthuong09/gitlab-mcp)
 
 GitLab MCP(Model Context Protocol) Server. **Includes bug fixes and improvements over the original GitLab MCP server.**
 
@@ -19,7 +19,7 @@ When using with the Claude App, you need to set up your API key and URLs directl
   "mcpServers": {
     "GitLab communication server": {
       "command": "npx",
-      "args": ["-y", "@zereight/mcp-gitlab"],
+      "args": ["-y", "@hthuong09/gitlab-mcp"],
       "env": {
         "GITLAB_PERSONAL_ACCESS_TOKEN": "your_gitlab_token",
         "GITLAB_API_URL": "your_gitlab_api_url",
@@ -36,6 +36,7 @@ When using with the Claude App, you need to set up your API key and URLs directl
 - `GITLAB_PERSONAL_ACCESS_TOKEN`: Your GitLab personal access token.
 - `GITLAB_API_URL`: Your GitLab API URL. (Default: `https://gitlab.com/api/v4`)
 - `GITLAB_READ_ONLY_MODE`: When set to 'true', restricts the server to only expose read-only operations. Useful for enhanced security or when write access is not needed. Also useful for using with Cursor and it's 40 tool limit.
+- `MCP_TOOLS_FILTER`: Optional comma-separated list of tool names to enable. If set, only the tools specified in this list will be available. Example: `create_issue,get_file_contents`.
 
 ## Tools 🛠️
 
@@ -192,7 +193,8 @@ When using with the Claude App, you need to set up your API key and URLs directl
         - `page`
         - `per_page`
         - `simple`
-    - Returns: Array of projects 
+    - Returns: Array of projects
+
 15. `list_labels`
     - List all labels for a project with filtering options 🏷️
     - Inputs:
@@ -201,13 +203,15 @@ When using with the Claude App, you need to set up your API key and URLs directl
       - `include_ancestor_groups` (optional): Include ancestor groups
       - `search` (optional): Filter labels by keyword
     - Returns: Array of labels
+
 16. `get_label`
     - Get a single label from a project
     - Inputs:
       -  `project_id` (string): Project ID or path
       - `label_id` (number/string): Label ID or name
-      - `include_ancestor_groups` (optional): Include ancestor groups 
+      - `include_ancestor_groups` (optional): Include ancestor groups
     - Returns: label details
+
 17. `create_label`
     - Create a new label in an object 🏷️➕
     - Inputs:
@@ -217,6 +221,7 @@ When using with the Claude App, you need to set up your API key and URLs directl
       - `description` (optional): Label description
       - `priority` (optional): Label priority
     - Returns: Created label details
+
 18. `update_label`
     - Update an existing label in a project 🏷️✏️
     - Inputs:
@@ -227,6 +232,7 @@ When using with the Claude App, you need to set up your API key and URLs directl
       - `description` (optional): New description
       - `priority` (optional): New priority
     - Returns: Updated label details
+
 19. `delete_label`
     - Delete a label from a project 🏷️❌
     - Inputs:

@@ -379,17 +379,18 @@ async function handleGitLabError(
   if (!response.ok) {
     const errorBody = await response.text();
     // Check specifically for Rate Limit error
-    if (response.status === 403 && errorBody.includes("User API Key Rate limit exceeded")) {
-        console.error("GitLab API Rate Limit Exceeded:", errorBody);
-        console.log("User API Key Rate limit exceeded. Please try again later.");
-        throw new Error(
-          `GitLab API Rate Limit Exceeded: ${errorBody}`
-        );
+    if (
+      response.status === 403 &&
+      errorBody.includes("User API Key Rate limit exceeded")
+    ) {
+      console.error("GitLab API Rate Limit Exceeded:", errorBody);
+      console.log("User API Key Rate limit exceeded. Please try again later.");
+      throw new Error(`GitLab API Rate Limit Exceeded: ${errorBody}`);
     } else {
-        // Handle other API errors
-        throw new Error(
-          `GitLab API error: ${response.status} ${response.statusText}\n${errorBody}`
-        );
+      // Handle other API errors
+      throw new Error(
+        `GitLab API error: ${response.status} ${response.statusText}\n${errorBody}`
+      );
     }
   }
 }
@@ -1776,10 +1777,24 @@ async function listGroupProjects(
 }
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  // If read-only mode is enabled, filter out write operations
+  // Filter tools based on the MCP_TOOLS_FILTER environment variable first
+  const toolFilterEnv = process.env.MCP_TOOLS_FILTER;
+  let filteredTools = allTools;
+  if (toolFilterEnv) {
+    const allowedToolNames = toolFilterEnv
+      .split(",")
+      .map((name) => name.trim());
+    if (allowedToolNames.length > 0) {
+      filteredTools = allTools.filter((tool) =>
+        allowedToolNames.includes(tool.name)
+      );
+    }
+  }
+
+  // Then, if read-only mode is enabled, filter out write operations from the potentially pre-filtered list
   const tools = GITLAB_READ_ONLY_MODE
-    ? allTools.filter((tool) => readOnlyTools.includes(tool.name))
-    : allTools;
+    ? filteredTools.filter((tool) => readOnlyTools.includes(tool.name))
+    : filteredTools;
 
   return {
     tools,
