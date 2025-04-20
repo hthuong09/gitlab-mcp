@@ -1,6 +1,6 @@
 # Better GitLab MCP Server
 
-## @zereight/mcp-gitlab
+## @hthuong09/mcp-gitlab
 
 [![smithery badge](https://smithery.ai/badge/@hthuong09/gitlab-mcp)](https://smithery.ai/server/@hthuong09/gitlab-mcp)
 
