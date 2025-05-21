@@ -206,6 +206,7 @@ export const CreateMergeRequestOptionsSchema = z.object({
   target_branch: z.string(), // Changed from base to match GitLab API
   allow_collaboration: z.boolean().optional(), // Changed from maintainer_can_modify to match GitLab API
   draft: z.boolean().optional(),
+  remove_source_branch: z.boolean().optional(),
 });
 
 export const CreateBranchOptionsSchema = z.object({
@@ -514,6 +515,10 @@ export const CreateMergeRequestSchema = ProjectParamsSchema.extend({
     .boolean()
     .optional()
     .describe("Allow commits from upstream members"),
+  remove_source_branch: z
+    .boolean()
+    .optional()
+    .describe("Remove source branch after merge"),
 });
 
 export const ForkRepositorySchema = ProjectParamsSchema.extend({

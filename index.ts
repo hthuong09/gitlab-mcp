@@ -852,6 +852,7 @@ async function createMergeRequest(
       target_branch: options.target_branch,
       allow_collaboration: options.allow_collaboration,
       draft: options.draft,
+      remove_source_branch: options.remove_source_branch,
     }),
   });
 
