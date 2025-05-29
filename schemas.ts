@@ -147,7 +147,16 @@ export const FileOperationSchema = z.object({
 
 // Tree and commit schemas
 export const GitLabTreeEntrySchema = z.object({
-  id: z.string(), // Changed from sha to match GitLab API
+  id: z.string(), // SHA of the tree entry
+  name: z.string(),
+  type: z.enum(["blob", "tree"]),
+  path: z.string(),
+  mode: z.string(),
+});
+
+// Updated schema to match GitLab API response for list repository tree
+export const GitLabRepositoryTreeEntrySchema = z.object({
+  id: z.string(), // SHA of the tree entry
   name: z.string(),
   type: z.enum(["blob", "tree"]),
   path: z.string(),
@@ -157,6 +166,17 @@ export const GitLabTreeEntrySchema = z.object({
 export const GitLabTreeSchema = z.object({
   id: z.string(), // Changed from sha to match GitLab API
   tree: z.array(GitLabTreeEntrySchema),
+});
+
+// Input schema for listing repository tree
+export const ListRepositoryTreeSchema = z.object({
+  project_id: z.string().describe("Project ID or URL-encoded path"),
+  path: z.string().optional().describe("The path inside the repository. Used to get content of subdirectories"),
+  ref: z.string().optional().describe("The name of a repository branch or tag or, if not given, the default branch"),
+  recursive: z.boolean().optional().describe("Boolean value used to get a recursive tree. Default is false"),
+  per_page: z.number().min(1).max(100).optional().describe("Number of results to show per page. If not specified, defaults to 20"),
+  page_token: z.string().optional().describe("The tree record ID at which to fetch the next page. Used only with keyset pagination"),
+  pagination: z.enum(["keyset"]).optional().describe("If keyset, use the keyset-based pagination method"),
 });
 
 export const GitLabCommitSchema = z.object({
@@ -207,6 +227,7 @@ export const CreateMergeRequestOptionsSchema = z.object({
   allow_collaboration: z.boolean().optional(), // Changed from maintainer_can_modify to match GitLab API
   draft: z.boolean().optional(),
   remove_source_branch: z.boolean().optional(),
+  squash: z.boolean().optional(),
 });
 
 export const CreateBranchOptionsSchema = z.object({
@@ -519,6 +540,10 @@ export const CreateMergeRequestSchema = ProjectParamsSchema.extend({
     .boolean()
     .optional()
     .describe("Remove source branch after merge"),
+  squash: z
+    .boolean()
+    .optional()
+    .describe("Squash commits into a single commit when merging"),
 });
 
 export const ForkRepositorySchema = ProjectParamsSchema.extend({
@@ -576,6 +601,12 @@ export const UpdateMergeRequestSchema = GetMergeRequestSchema.extend({
 
 export const GetMergeRequestDiffsSchema = GetMergeRequestSchema.extend({
   view: z.enum(["inline", "parallel"]).optional().describe("Diff view type"),
+});
+
+export const ApproveMergeRequestSchema = ProjectParamsSchema.extend({
+  merge_request_iid: z.number().describe("The internal ID of the merge request"),
+  approval_password: z.string().optional().describe("Current user's password. Required if 'Require user re-authentication to approve' is enabled in the project settings"),
+  sha: z.string().optional().describe("The HEAD of the merge request. If passed, it must match the current HEAD to add the approval"),
 });
 
 export const CreateNoteSchema = z.object({
@@ -773,6 +804,7 @@ export type GitLabDirectoryContent = z.infer<typeof GitLabDirectoryContentSchema
 export type GitLabContent = z.infer<typeof GitLabContentSchema>;
 export type FileOperation = z.infer<typeof FileOperationSchema>;
 export type GitLabTree = z.infer<typeof GitLabTreeSchema>;
+export type GitLabRepositoryTreeEntry = z.infer<typeof GitLabRepositoryTreeEntrySchema>;
 export type GitLabCommit = z.infer<typeof GitLabCommitSchema>;
 export type GitLabReference = z.infer<typeof GitLabReferenceSchema>;
 export type CreateRepositoryOptions = z.infer<typeof CreateRepositoryOptionsSchema>;

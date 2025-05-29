@@ -23,6 +23,7 @@ import {
   GitLabCreateUpdateFileResponseSchema,
   GitLabSearchResponseSchema,
   GitLabTreeSchema,
+  GitLabRepositoryTreeEntrySchema,
   GitLabCommitSchema,
   GitLabNamespaceSchema,
   GitLabNamespaceExistsResponseSchema,
@@ -45,6 +46,7 @@ import {
   GetMergeRequestSchema,
   GetMergeRequestDiffsSchema,
   UpdateMergeRequestSchema,
+  ApproveMergeRequestSchema,
   ListIssuesSchema,
   GetIssueSchema,
   UpdateIssueSchema,
@@ -67,6 +69,7 @@ import {
   DeleteLabelSchema,
   CreateNoteSchema,
   ListGroupProjectsSchema,
+  ListRepositoryTreeSchema,
   // Discussion Schemas
   GitLabDiscussionNoteSchema, // Added
   GitLabDiscussionSchema,
@@ -81,6 +84,7 @@ import {
   type GitLabCreateUpdateFileResponse,
   type GitLabSearchResponse,
   type GitLabTree,
+  type GitLabRepositoryTreeEntry,
   type GitLabCommit,
   type FileOperation,
   type GitLabMergeRequestDiff,
@@ -146,8 +150,13 @@ const allTools = [
   {
     name: "get_file_contents",
     description:
-      "Get the contents of a file or directory from a GitLab project",
+      "Get the contents of a file from a GitLab project",
     inputSchema: zodToJsonSchema(GetFileContentsSchema),
+  },
+  {
+    name: "list_repository_tree",
+    description: "List repository files and directories in a GitLab project",
+    inputSchema: zodToJsonSchema(ListRepositoryTreeSchema),
   },
   {
     name: "push_files",
@@ -188,6 +197,11 @@ const allTools = [
     name: "update_merge_request",
     description: "Update a merge request",
     inputSchema: zodToJsonSchema(UpdateMergeRequestSchema),
+  },
+  {
+    name: "approve_merge_request",
+    description: "Approve a merge request",
+    inputSchema: zodToJsonSchema(ApproveMergeRequestSchema),
   },
   {
     name: "create_note",
@@ -305,6 +319,7 @@ const allTools = [
 const readOnlyTools = [
   "search_repositories",
   "get_file_contents",
+  "list_repository_tree",
   "get_merge_request",
   "get_merge_request_diffs",
   "list_merge_request_discussions",
@@ -534,6 +549,67 @@ async function getFileContents(
   }
 
   return parsedData;
+}
+
+/**
+ * List repository files and directories in a GitLab project
+ * 저장소 파일 및 디렉토리 목록 조회 (List repository files and directories)
+ *
+ * @param {string} projectId - The ID or URL-encoded path of the project
+ * @param {z.infer<typeof ListRepositoryTreeSchema>} options - Options for listing repository tree
+ * @returns {Promise<GitLabRepositoryTreeEntry[]>} The repository tree entries
+ */
+async function listRepositoryTree(
+  projectId: string,
+  options: Omit<z.infer<typeof ListRepositoryTreeSchema>, "project_id"> = {}
+): Promise<GitLabRepositoryTreeEntry[]> {
+  const url = new URL(
+    `${GITLAB_API_URL}/projects/${encodeURIComponent(
+      projectId
+    )}/repository/tree`
+  );
+
+  // Add query parameters
+  if (options.path) {
+    url.searchParams.append("path", options.path);
+  }
+
+  if (options.ref) {
+    url.searchParams.append("ref", options.ref);
+  } else {
+    // If no ref is provided, use the default branch
+    const defaultBranch = await getDefaultBranchRef(projectId);
+    url.searchParams.append("ref", defaultBranch);
+  }
+
+  if (options.recursive !== undefined) {
+    url.searchParams.append("recursive", options.recursive.toString());
+  }
+
+  if (options.per_page) {
+    url.searchParams.append("per_page", options.per_page.toString());
+  }
+
+  if (options.page_token) {
+    url.searchParams.append("page_token", options.page_token);
+  }
+
+  if (options.pagination) {
+    url.searchParams.append("pagination", options.pagination);
+  }
+
+  const response = await fetch(url.toString(), {
+    headers: DEFAULT_HEADERS,
+  });
+
+  // Handle 404 error specifically for missing paths
+  if (response.status === 404) {
+    throw new Error(`Path not found: ${options.path || "root"}`);
+  }
+
+  await handleGitLabError(response);
+  const data = await response.json();
+  return z.array(GitLabRepositoryTreeEntrySchema).parse(data);
 }
 
 /**
@@ -852,7 +928,8 @@ async function createMergeRequest(
       target_branch: options.target_branch,
       allow_collaboration: options.allow_collaboration,
       draft: options.draft,
-      remove_source_branch: options.remove_source_branch,
+      remove_source_branch: options.remove_source_branch ?? true,
+      squash: options.squash ?? true,
     }),
   });
 
@@ -1325,6 +1402,55 @@ async function updateMergeRequest(
     headers: DEFAULT_HEADERS,
     body: JSON.stringify(options),
   });
+
+  await handleGitLabError(response);
+  return GitLabMergeRequestSchema.parse(await response.json());
+}
+
+/**
+ * Approve a merge request
+ * 병합 요청 승인 (Approve merge request)
+ *
+ * @param {string} projectId - The ID or URL-encoded path of the project
+ * @param {number} mergeRequestIid - The internal ID of the merge request
+ * @param {Object} options - The approval options
+ * @returns {Promise<GitLabMergeRequest>} The approved merge request
+ */
+async function approveMergeRequest(
+  projectId: string,
+  mergeRequestIid: number,
+  options: Omit<
+    z.infer<typeof ApproveMergeRequestSchema>,
+    "project_id" | "merge_request_iid"
+  > = {}
+): Promise<GitLabMergeRequest> {
+  const url = new URL(
+    `${GITLAB_API_URL}/projects/${encodeURIComponent(
+      projectId
+    )}/merge_requests/${mergeRequestIid}/approve`
+  );
+
+  const body: Record<string, any> = {};
+  
+  if (options.approval_password) {
+    body.approval_password = options.approval_password;
+  }
+  
+  if (options.sha) {
+    body.sha = options.sha;
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: DEFAULT_HEADERS,
+    body: JSON.stringify(body),
+  });
+
+  // Handle specific error case for SHA mismatch
+  if (response.status === 409) {
+    const errorBody = await response.text();
+    throw new Error(`SHA mismatch: The provided SHA does not match the current HEAD of the merge request. ${errorBody}`);
+  }
 
   await handleGitLabError(response);
   return GitLabMergeRequestSchema.parse(await response.json());
@@ -1889,6 +2015,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case "list_repository_tree": {
+        const args = ListRepositoryTreeSchema.parse(request.params.arguments);
+        const { project_id, ...options } = args;
+        const tree = await listRepositoryTree(project_id, options);
+        return {
+          content: [{ type: "text", text: JSON.stringify(tree, null, 2) }],
+        };
+      }
+
       case "create_or_update_file": {
         const args = CreateOrUpdateFileSchema.parse(request.params.arguments);
         const result = await createOrUpdateFile(
@@ -2288,6 +2423,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const projects = await listGroupProjects(args);
         return {
           content: [{ type: "text", text: JSON.stringify(projects, null, 2) }],
+        };
+      }
+
+      case "approve_merge_request": {
+        const args = ApproveMergeRequestSchema.parse(request.params.arguments);
+        const { project_id, merge_request_iid } = args;
+        const approval = await approveMergeRequest(project_id, merge_request_iid);
+        return {
+          content: [{ type: "text", text: JSON.stringify(approval, null, 2) }],
         };
       }
 
