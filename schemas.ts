@@ -792,12 +792,33 @@ export const ListGroupProjectsSchema = z.object({
   with_security_reports: z.boolean().optional().describe("Include security reports")
 });
 
+// Approval related schemas
+export const GitLabApprovalUserSchema = z.object({
+  user: GitLabUserSchema,
+});
+
+export const GitLabMergeRequestApprovalSchema = z.object({
+  id: z.number(),
+  iid: z.number(),
+  project_id: z.number(),
+  title: z.string(),
+  description: z.string().nullable(),
+  state: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  merge_status: z.string(),
+  approvals_required: z.number(),
+  approvals_left: z.number(),
+  approved_by: z.array(GitLabApprovalUserSchema),
+});
+
 // Export types
 export type GitLabAuthor = z.infer<typeof GitLabAuthorSchema>;
 export type GitLabFork = z.infer<typeof GitLabForkSchema>;
 export type GitLabIssue = z.infer<typeof GitLabIssueSchema>;
 export type GitLabIssueWithLinkDetails = z.infer<typeof GitLabIssueWithLinkDetailsSchema>;
 export type GitLabMergeRequest = z.infer<typeof GitLabMergeRequestSchema>;
+export type GitLabMergeRequestApproval = z.infer<typeof GitLabMergeRequestApprovalSchema>;
 export type GitLabRepository = z.infer<typeof GitLabRepositorySchema>;
 export type GitLabFileContent = z.infer<typeof GitLabFileContentSchema>;
 export type GitLabDirectoryContent = z.infer<typeof GitLabDirectoryContentSchema>;

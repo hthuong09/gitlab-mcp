@@ -19,6 +19,7 @@ import {
   GitLabRepositorySchema,
   GitLabIssueSchema,
   GitLabMergeRequestSchema,
+  GitLabMergeRequestApprovalSchema,
   GitLabContentSchema,
   GitLabCreateUpdateFileResponseSchema,
   GitLabSearchResponseSchema,
@@ -80,6 +81,7 @@ import {
   type GitLabRepository,
   type GitLabIssue,
   type GitLabMergeRequest,
+  type GitLabMergeRequestApproval,
   type GitLabContent,
   type GitLabCreateUpdateFileResponse,
   type GitLabSearchResponse,
@@ -1409,12 +1411,12 @@ async function updateMergeRequest(
 
 /**
  * Approve a merge request
- * 병합 요청 승인 (Approve merge request)
+ * 합병 요청 승인 (Approve a merge request)
  *
  * @param {string} projectId - The ID or URL-encoded path of the project
  * @param {number} mergeRequestIid - The internal ID of the merge request
  * @param {Object} options - The approval options
- * @returns {Promise<GitLabMergeRequest>} The approved merge request
+ * @returns {Promise<GitLabMergeRequestApproval>} The approved merge request with approval details
  */
 async function approveMergeRequest(
   projectId: string,
@@ -1423,7 +1425,7 @@ async function approveMergeRequest(
     z.infer<typeof ApproveMergeRequestSchema>,
     "project_id" | "merge_request_iid"
   > = {}
-): Promise<GitLabMergeRequest> {
+): Promise<GitLabMergeRequestApproval> {
   const url = new URL(
     `${GITLAB_API_URL}/projects/${encodeURIComponent(
       projectId
@@ -1453,7 +1455,7 @@ async function approveMergeRequest(
   }
 
   await handleGitLabError(response);
-  return GitLabMergeRequestSchema.parse(await response.json());
+  return GitLabMergeRequestApprovalSchema.parse(await response.json());
 }
 
 /**
